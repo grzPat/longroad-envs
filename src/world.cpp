@@ -33,8 +33,8 @@ Eigen::VectorXi Lane_i::get_circ_shift_up(Eigen::VectorXi &vector_to_shift){
 Lane_i::Lane_i(int size, int color) : color(color){
     
     
-    cars = Eigen::VectorXi::Zero(size);//create_random_vec(size,0.2,world_generator); // TODO:Lane prob fixed at compile time !! Change for global reward
-    hold = Eigen::VectorXi::Zero(size);//create_random_vec(size,0.5,world_generator); 
+    cars = Eigen::VectorXi::Zero(size);
+    hold = Eigen::VectorXi::Zero(size);
     move = Eigen::VectorXi::Zero(size);
     move_pre = Eigen::VectorXi::Zero(size);
     move_last = Eigen::VectorXi::Zero(size);
@@ -97,13 +97,13 @@ Eigen::VectorXi Lane_i::get_hold(){
     return this->hold;
 }
 
-Eigen::MatrixXi Lane_i::get_states(){ //Adds MA observations
+Eigen::MatrixXi Lane_i::get_states(){ 
     Eigen::MatrixXi state(this->cars.size(),3);
     state << this->cars,get_circ_shift_down(this->cars),get_circ_shift_up(this->cars);
     return state;
 }
 
-void Lane_i::set_states(Eigen::VectorXi state){ //Adds MA observations
+void Lane_i::set_states(Eigen::VectorXi state){
     this->cars<<state;
 }
 
@@ -111,7 +111,7 @@ void Lane_i::set_states(Eigen::VectorXi state){ //Adds MA observations
 World_i::World_i(int size, bool measure_time,  bool yellow, double global_cost, double global_reward):
                 size(size),measure_time(measure_time), yellow(yellow), global_cost(global_cost), global_reward(global_reward){
     
-    // init values for avg time measurement
+    // Init values for avg time measurement
     steptime = 0.0;
     steps = 1;
     t_start = std::chrono::high_resolution_clock::now();
@@ -120,6 +120,7 @@ World_i::World_i(int size, bool measure_time,  bool yellow, double global_cost, 
     std::random_device rd;
     this->seed = rd();
     this->generator = std::mt19937(this->seed);
+    // Lane sections are initialized with a fixed 0.2 prob of car spawned
     Lane1 = new Lane_i(size,0); Lane1->set_states(create_random_vec(size,0.2,this->generator));
     Lane2 = new Lane_i(size,1); Lane2->set_states(create_random_vec(size,0.2,this->generator));
     Lane3 = new Lane_i(size,2); Lane3->set_states(create_random_vec(size,0.2,this->generator));
@@ -182,26 +183,29 @@ void World_i::move_lanes_yellow(Eigen::VectorXi actions){
 }
 
 void World_i::step(Eigen::VectorXi  actions){
-    
+    //Measuring time for performance check 
     if(measure_time){
         t_start = std::chrono::high_resolution_clock::now();
     }
     Eigen::VectorXi reward_i;
     Eigen::VectorXd reward_d;
+    // When yellow is flagged a buffer time for signal transition is added
     if(yellow){
         this->move_lanes_yellow(actions);
     }
     else{
         this->move_lanes(actions);
     }
-    
+    // reward_i describes the negative reward for the halted vehicles
     reward_i = this->Lane1->get_hold() + this->Lane2->get_hold() 
              + this->Lane3->get_hold() + this->Lane4->get_hold();
     reward_i *= -1;
+    // reward_d consist of a regulating cost for the total of global switching actions 
+    // and a reward for consistently moving vehicles
     reward_d = reward_i.cast<double>();
     if(this->global_cost>=0.001){
         // Minimum 0.001 factor 
-        double re_1 = (double) (actions-last_actions).cwiseAbs().sum()/actions.size(); //TODO: maybe times 4
+        double re_1 = (double) (actions-last_actions).cwiseAbs().sum()/actions.size(); 
         reward_d = reward_d.array() - re_1*this->global_cost;
     }
     if(this->global_reward>=0.001){
@@ -211,10 +215,11 @@ void World_i::step(Eigen::VectorXi  actions){
         reward_d = reward_d.array() +re_2*this->global_reward;
     }
     this->last_rewards = reward_d;
-    if(yellow){// States of the for lanes and neighbours + phase state of agent and neighbors
+    // States of the for lanes and neighbours + phase state of agent and neighbors
+    if(yellow){
         this->last_states << this->Lane1->get_states(),this->Lane2->get_states(),this->Lane3->get_states(),this->Lane4->get_states(),this->signal_state,Lane1->get_circ_shift_down(this->signal_state),Lane1->get_circ_shift_up(this->signal_state);
     }
-    else{//States of the for lanes and neighbours + last action of agent and neighbours
+    else{
         this->last_states << this->Lane1->get_states(),this->Lane2->get_states(),this->Lane3->get_states(),this->Lane4->get_states(),actions,Lane1->get_circ_shift_down(actions),Lane1->get_circ_shift_up(actions);
     }
     this->last_actions=actions;
@@ -231,8 +236,9 @@ void World_i::step(Eigen::VectorXi  actions){
 
 }  //namespace longroad
 
+// Example for init in cpp
+// int main(int, char**) {
 
-int main(int, char**) {
-    // int size = 10;
-    // longroad::World_i world(size);
-}
+//      int size = 10;
+//      longroad::World_i world(size);
+// }

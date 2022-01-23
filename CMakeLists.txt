@@ -24,9 +24,9 @@ set_target_properties(world
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR/longroad/}"
 )
 
-add_executable(longroad src/world.cpp)
+add_library(longroad src/world.cpp)
 target_compile_options(longroad PRIVATE -msse3 )
-#target_link_libraries (world PRIVATE longroad)
+target_link_libraries (world PRIVATE longroad)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

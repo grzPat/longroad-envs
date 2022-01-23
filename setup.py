@@ -64,7 +64,8 @@ kwargs = dict(
     ext_modules=[CMakeExtension('longroad.world')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
-    packages=find_packages(),#['longroad','longroad.envs'],
+    test_suite="tests",
+    packages=find_packages(),
     install_requires=['gym', 'numpy','pettingzoo']
     
 )
